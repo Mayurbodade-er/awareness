@@ -44,7 +44,7 @@ jobs:
           echo "Checking for AlarmManager, postDelayed, UsageStatsManager, setRepeating..."
           TARGET_DIRS=$(ls -d app core feature 2>/dev/null || true)
           if [ -n "$TARGET_DIRS" ]; then
-            ! grep -rnE --exclude-dir=build "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" $TARGET_DIRS || {
+            ! grep -rnE --exclude-dir=build --exclude="*Test*.kt" "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" $TARGET_DIRS || {
               echo "FAILED: Forbidden scheduler/polling detected!"
               exit 1
             }

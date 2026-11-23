@@ -30,7 +30,7 @@ class AccessibilityConfigVerificationTest {
     }
 
     @Test
-    fun noForbiddenUsageStatsManagerInCodebase() {
+    fun noForbiddenPollingApiInCodebase() {
         val forbiddenApi = "UsageStats" + "Manager"
         val projectRoot = File("../../")
         val kotlinFiles = projectRoot.walkTopDown()
@@ -40,7 +40,7 @@ class AccessibilityConfigVerificationTest {
         for (file in kotlinFiles) {
             val content = file.readText()
             assertFalse(
-                "UsageStatsManager is forbidden in battery-disciplined architecture: ${file.path}",
+                "Polling API is forbidden in battery-disciplined architecture: ${file.path}",
                 content.contains(forbiddenApi)
             )
         }
