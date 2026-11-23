@@ -385,12 +385,18 @@ object TargetAppAllowlist {
 ### File & Folder Mapping
 
 ```
-:core:accessibility  AwarenessAccessibilityService.kt
+:core:accessibility  TargetAppAllowlist.kt
                      AccessibilityEventBus.kt
-                     TargetAppAllowlist.kt
-:core:domain         model/AwarenessEvent.kt (SessionStarted/SessionEnded/ReelScrolled)
-:app                 res/xml/accessibility_service_config.xml
-:build-logic         AllowlistXmlGenerator.kt (generates packageNames from code)
+                     AwarenessAccessibilityService.kt
+                     res/values/strings.xml
+                     res/xml/accessibility_service_config.xml
+                     test/TargetAppAllowlistTest.kt
+                     test/AccessibilityEventBusTest.kt
+                     test/AwarenessAccessibilityServiceTest.kt
+                     test/AccessibilityConfigVerificationTest.kt
+:app                 AndroidManifest.xml (AwarenessAccessibilityService declaration)
+                     build.gradle.kts (added :core:accessibility dependency)
+settings.gradle.kts  (included :core:accessibility)
 ```
 
 ---
