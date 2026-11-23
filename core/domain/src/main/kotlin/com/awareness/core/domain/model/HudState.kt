@@ -6,5 +6,7 @@ data class HudState(
     val elapsedMillis: Long,
     val reelCount: Int,
     val showReelCount: Boolean,
-    val browserDomainLabel: String? = null
+    val browserDomainLabel: String? = null,
+    val opacityPercent: Int = 85,
+    val scale: HudScale = HudScale.STANDARD
 )

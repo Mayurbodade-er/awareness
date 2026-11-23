@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.flow
  * into a stream of HudState models consumed by the HUD renderer.
  *
  * Invariants:
- * - isVisible is true iff state is Active AND elapsed >= revealDelayMillisSnapshot.
+ * - isVisible is true iff state is Active AND elapsed >= revealDelayMillisSnapshot AND (in periodic nudge mode: within visible window).
  * - Messages rotate strictly every messageDisplayDurationSeconds.
  * - showReelCount is false for browsers (isBrowser = true).
  * - Only the timer and message rotate on the 1 Hz monotonic tick.
@@ -39,12 +39,33 @@ class ObserveHudStateUseCaseImpl(
                     elapsedMillis = 0L,
                     reelCount = 0,
                     showReelCount = false,
-                    browserDomainLabel = null
+                    browserDomainLabel = null,
+                    opacityPercent = preferences.hudOpacityPercent,
+                    scale = preferences.hudScale
                 )
 
                 is SessionState.Active -> {
                     val elapsedMillis = maxOf(0L, currentElapsedMillis - sessionState.startElapsed)
-                    val isVisible = elapsedMillis >= sessionState.revealDelayMillisSnapshot
+                    val revealDelayMillis = sessionState.revealDelayMillisSnapshot
+
+                    // Visibility computation with Periodic Nudge support:
+                    // If elapsed < revealDelay, HUD is completely hidden.
+                    // If hideDurationSeconds <= 0, HUD remains continuously visible.
+                    // Otherwise, after revealDelay, it cycles between visible (duration) and hidden (hideDuration).
+                    val isVisible = if (elapsedMillis < revealDelayMillis) {
+                        false
+                    } else if (preferences.hideDurationSeconds <= 0) {
+                        true
+                    } else {
+                        val cycleElapsed = elapsedMillis - revealDelayMillis
+                        val visiblePeriodMillis = preferences.messageDisplayDurationSeconds * 1000L
+                        val cyclePeriodMillis = visiblePeriodMillis + (preferences.hideDurationSeconds * 1000L)
+                        if (cyclePeriodMillis > 0L) {
+                            (cycleElapsed % cyclePeriodMillis) < visiblePeriodMillis
+                        } else {
+                            true
+                        }
+                    }
 
                     // Message rotation
                     val messages = preferences.selectedMessages
@@ -67,7 +88,9 @@ class ObserveHudStateUseCaseImpl(
                         elapsedMillis = elapsedMillis,
                         reelCount = sessionState.reelCount,
                         showReelCount = !sessionState.isBrowser,
-                        browserDomainLabel = domainLabel
+                        browserDomainLabel = domainLabel,
+                        opacityPercent = preferences.hudOpacityPercent,
+                        scale = preferences.hudScale
                     )
                 }
             }

@@ -190,6 +190,9 @@ data class HudState(
 13. `HudState.isVisible = sessionState is Active && elapsedMillis >= Active.revealDelayMillisSnapshot`.
 14. For browser sessions (`Active.isBrowser == true`), `showReelCount = false`; the Reel line is omitted, not shown as zero. Timer and message rotation still apply.
 15. `HudState` is produced by combining `SessionOrchestrator.sessionState`, `HudPreferencesRepository.preferences`, and monotonic timer ticks. The overlay service does not compute visibility or rotation.
+16. **Periodic Nudge Timing (Visible & Hidden Cycle):** When `hideDurationSeconds > 0`, the HUD does not remain permanently visible. After reaching `revealDelayMillisSnapshot`, the HUD displays for `messageDisplayDurationSeconds`, hides for `hideDurationSeconds`, and repeats cyclically (`cycleElapsed = elapsedMillis - revealDelayMillisSnapshot`, `cyclePeriod = visibleDuration + hideDuration`, visible if `cycleElapsed % cyclePeriod < visibleDuration`). If `hideDurationSeconds == 0`, HUD remains continuously visible.
+17. **Custom Mindfulness Prompts:** Users can create custom mindfulness messages in HUD Personalization. Custom prompts are stored persistently in DataStore (`PreferencesKeys.CUSTOM_MESSAGES_SET`) as `id|text`, appear in the active message selection checklist, and can be deleted individually with clean state cleanup.
+18. **HUD Opacity & Scaling:** Users can customize overlay background opacity (20%–100%, default 85%) and size scale (`HudScale.COMPACT`, `HudScale.STANDARD`, `HudScale.LARGE`). The HUD overlay adapts typography, padding, and max-width dynamically per scale while strictly conforming to StudioBlank's 0dp border radius and flat elevation.
 
 ### Edge Cases
 
@@ -256,14 +259,20 @@ data class HudState(
 | VS05‑TS‑14 | Browser hides Reel line | Start browser session, delay 0 | `showReelCount=false`; no Reel line |
 | VS05‑TS‑15 | Mid-session delay change | Snapshot 180 s, change prefs to 60 s | Current session still reveals at 180 s |
 | VS05‑TS‑16 | Mid-session message selection change | Select new list mid-session | Next rotation uses new list |
+| VS05‑TS‑17 | Periodic Nudge Cycle | Delay 60s, visible 30s, hide 30s | At 59s: hidden; 60s-89s: visible; 90s-119s: hidden; 120s: visible |
+| VS05‑TS‑18 | Custom Mindfulness Prompts | Add custom prompt, toggle in checklist | Appears in rotation; delete removes cleanly |
+| VS05‑TS‑19 | HUD Scale & Opacity | Set scale `COMPACT`/`LARGE`, opacity 50% | Overlay dimensions, typography, and alpha match |
 
 ### Database Schema
 
-None. Message list is local `DefaultMindfulnessMessages`; selected IDs come from `HudPreferencesRepository`.
+None. Message list is local `DefaultMindfulnessMessages` + custom messages; preferences persist in DataStore `PreferencesKeys`.
 
 ### API Contracts
 
 ```kotlin
+// core/domain/model/HudScale.kt
+enum class HudScale { COMPACT, STANDARD, LARGE }
+
 // core/domain/usecase/ObserveHudStateUseCase.kt
 interface ObserveHudStateUseCase {
     operator fun invoke(): Flow<HudState>
@@ -275,7 +284,21 @@ data class HudState(
     val message: String,
     val elapsedMillis: Long,
     val reelCount: Int,
-    val showReelCount: Boolean
+    val showReelCount: Boolean,
+    val browserDomainLabel: String? = null,
+    val opacityPercent: Int = 85,
+    val scale: HudScale = HudScale.STANDARD
+)
+
+// core/domain/model/HudPreferences.kt
+data class HudPreferences(
+    val initialRevealDelaySeconds: Int = 0,
+    val messageDisplayDurationSeconds: Int = 30,
+    val hideDurationSeconds: Int = 0,
+    val selectedMessageIds: Set<String> = DefaultMindfulnessMessages.defaultSelectedIds,
+    val customMessages: List<MindfulnessMessage> = emptyList(),
+    val hudOpacityPercent: Int = 85,
+    val hudScale: HudScale = HudScale.STANDARD
 )
 
 // core/presentation/util/TimeFormatter.kt
@@ -300,22 +323,31 @@ object MessageRotation {
 ```text
 combine(sessionState, hudPreferences, timerTicks) { session, prefs, elapsed ->
     when (session) {
-        Idle -> HudState(isVisible=false, message="", elapsedMillis=0, reelCount=0, showReelCount=false)
+        Idle -> HudState(isVisible=false, message="", elapsedMillis=0, reelCount=0, showReelCount=false, opacityPercent=prefs.hudOpacityPercent, scale=prefs.hudScale)
         is Active -> {
-            val visible = elapsed >= session.revealDelayMillisSnapshot
+            val elapsedMillis = maxOf(0L, elapsed - session.startElapsed)
+            val visible = if (elapsedMillis < session.revealDelayMillisSnapshot) {
+                false
+            } else if (prefs.hideDurationSeconds <= 0) {
+                true
+            } else {
+                val cycleElapsed = elapsedMillis - session.revealDelayMillisSnapshot
+                val visiblePeriod = prefs.messageDisplayDurationSeconds * 1000L
+                val cyclePeriod = visiblePeriod + (prefs.hideDurationSeconds * 1000L)
+                (cycleElapsed % cyclePeriod) < visiblePeriod
+            }
             val messages = prefs.selectedMessages.ifEmpty { DefaultMindfulnessMessages.fallback }
-            val index = if (visible) MessageRotation.indexFor(
-                elapsedMillis = elapsed,
-                revealDelayMillis = session.revealDelayMillisSnapshot,
-                messageDisplayDurationSeconds = prefs.messageDisplayDurationSeconds,
-                messageCount = messages.size
-            ) else 0
+            val index = if (visible && messages.isNotEmpty() && prefs.messageDisplayDurationSeconds > 0) {
+                ((elapsedMillis / (prefs.messageDisplayDurationSeconds * 1000L)) % messages.size).toInt()
+            } else 0
             HudState(
                 isVisible = visible,
                 message = if (visible) messages[index].text else "",
-                elapsedMillis = elapsed,
+                elapsedMillis = elapsedMillis,
                 reelCount = session.reelCount,
-                showReelCount = !session.isBrowser
+                showReelCount = !session.isBrowser,
+                opacityPercent = prefs.hudOpacityPercent,
+                scale = prefs.hudScale
             )
         }
     }
@@ -326,17 +358,36 @@ combine(sessionState, hudPreferences, timerTicks) { session, prefs, elapsed ->
 
 | Type | Tests |
 |---|---|
-| **Unit** | `TimeFormatterTest` (boundaries 0, 59 999, 60 000, 3 599 999, 3 600 000). `MindfulnessMessagesTest` (non-empty, unique IDs, rotates). `MessageRotationTest` (delay boundaries, one message, multiple messages, empty fallback). `HudStateMapperTest` (visible/hidden, browser flag, pre-reveal counts). |
-| **Integration** | `HudViewModelTest` (Turbine): collect `HudState` after `SessionStarted`, `ReelScrolled`, preference changes, and fake clock advances. |
+| **Unit** | `TimeFormatterTest` (boundaries 0, 59 999, 60 000, 3 599 999, 3 600 000). `MindfulnessMessagesTest` (non-empty, unique IDs, rotates). `MessageRotationTest` (delay boundaries, one message, multiple messages, empty fallback). `HudStateMapperTest` (visible/hidden, browser flag, pre-reveal counts). `PeriodicNudgeTimingTest` (nudge cycling, continuous mode). `HudStylingAndCustomMessageTest` (custom prompt selection, opacity & scale forwarding). |
+| **Integration** | `HudViewModelTest` (Turbine): collect `HudState` after `SessionStarted`, `ReelScrolled`, preference changes, and fake clock advances. `HudContentRotationIntegrationTest` (Turbine): rotation boundaries and nudge periods. |
 | **API** | `ObserveHudStateUseCaseContractTest` — initial hidden state, reveal at snapshot delay, monotonic timer, count increments, browser `showReelCount=false`, empty-selection fallback. |
-| **E2E Manual** | Configure 3 min delay, 45 s duration, 2 messages. Open Instagram → no HUD for 3 min → HUD appears with `03:0x`, first selected message, total Reels → message rotates at 45 s → leave app → HUD disappears. Open Chrome → HUD appears per delay, no Reel line. |
+| **E2E Manual** | Configure 3 min delay, 30 s duration, 30 s nudge interval, 1 custom message. Open Instagram → no HUD for 3 min → HUD appears for 30s → hides for 30s → reappears. |
 
 ### File & Folder Mapping
 
-- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudComposable.kt` `[Modified]` `[Frontend]` — Full 3-line StudioBlank HUD overlay composable with isolated monotonic timer recomposition, zero-size layout when hidden, and package/browser-aware reel display.
+#### 1. Backend & Domain Models
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudScale.kt` `[New]` `[Backend]` — Enum defining HUD sizing scale tokens (`COMPACT`, `STANDARD`, `LARGE`).
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudPreferences.kt` `[Modified]` `[Backend]` — Extended preferences with `hideDurationSeconds`, `customMessages`, `hudOpacityPercent`, and `hudScale`.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudState.kt` `[Modified]` `[Backend]` — Added `opacityPercent` and `scale` rendering attributes.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/repository/HudPreferencesRepository.kt` `[Modified]` `[Backend]` — Extended repository contract with methods for custom messages, nudge intervals, and styling updates.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/ObserveHudStateUseCaseImpl.kt` `[Modified]` `[Backend]` — Implemented periodic nudge cycle modulo logic and dynamic opacity/scale state mapping.
+
+#### 2. Database & Persistence
+- `core/data/src/main/kotlin/com/awareness/core/data/datastore/HudPreferencesDataStore.kt` `[Modified]` `[Database/Persistence]` — Defined DataStore keys for nudge interval, opacity, scale, and serialized custom messages set.
+- `core/data/src/main/kotlin/com/awareness/core/data/repository/HudPreferencesRepositoryImpl.kt` `[Modified]` `[Database/Persistence]` — Implemented DataStore reading, writing, clamping (0-3600s, 20-100%), and `$id|$text` serialization for custom prompts.
+
+#### 3. Frontend & Presentation
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/hud/HudPersonalizationViewModel.kt` `[Modified]` `[Frontend]` — Added state handling and actions for nudge intervals, custom prompt creation/deletion, scale selection, and opacity adjustment.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/hud/HudPersonalizationScreen.kt` `[Modified]` `[Frontend]` — StudioBlank UI implementing timing configuration, periodic nudge input, scale chips, opacity selector, custom prompt input, and prompt deletion.
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudComposable.kt` `[Modified]` `[Frontend]` — Full 3-line StudioBlank HUD overlay composable with isolated monotonic timer recomposition, zero-size layout when hidden, dynamic scale dimensions/typography, and customizable opacity.
 - `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudForegroundService.kt` `[Modified]` `[Backend]` — Added companion reactive state stream provider and static `start(context)` / `stop(context)` helpers to bind overlay lifecycle to domain session state.
 - `app/src/main/kotlin/com/awareness/app/AppApplication.kt` `[Modified]` `[Backend]` — Wired `SessionOrchestrator`, `ObserveHudStateUseCase`, and `AccessibilityEventBusImpl` to automatically start/stop `HudForegroundService` on Active/Idle session transitions.
-- `app/build.gradle.kts` `[Modified]` `[Config/Build]` — Added `:core:data`, `:core:presentation`, `:core:accessibility`, `:core:overlay`, `:feature:settings`, and `:feature:hud` dependencies and Robolectric test options.
+
+#### 4. Unit & Integration Tests
+- `core/domain/src/test/kotlin/com/awareness/core/domain/usecase/PeriodicNudgeTimingTest.kt` `[New]` `[Unit Test]` — Unit tests for periodic nudge visible and hidden interval calculations.
+- `core/domain/src/test/kotlin/com/awareness/core/domain/model/HudStylingAndCustomMessageTest.kt` `[New]` `[Unit Test]` — Unit tests for custom message selection fallback and styling properties.
+- `feature/settings/src/test/kotlin/com/awareness/feature/settings/HudPersonalizationViewModelTest.kt` `[Modified]` `[Unit Test]` — Unit tests for nudge clamping, custom prompt add/delete, and scale/opacity persistence.
+- `core/data/src/test/kotlin/com/awareness/core/data/repository/HudPreferencesModelResolutionTest.kt` `[Modified]` `[Unit Test]` — Unit tests for preference defaults, clamping, and custom message resolution.
 - `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/TimeFormatterBoundaryTest.kt` `[New]` `[Unit Test]` — Boundary unit tests for `TimeFormatter.formatElapsed` across sub-minute, hour, and multi-hour thresholds.
 - `feature/hud/src/test/kotlin/com/awareness/feature/hud/HudContentRotationIntegrationTest.kt` `[New]` `[Integration Test]` — Integration tests verifying delay-aware visibility, message rotation across display duration ticks, and browser reel line suppression.
 - `app/src/test/kotlin/com/awareness/app/AppPipelineIntegrationTest.kt` `[New]` `[Integration Test]` — End-to-end pipeline test verifying accessibility sensor event dispatch transitions application state machine and orchestrates HUD foreground service.

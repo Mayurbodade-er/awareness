@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.awareness.core.domain.model.DefaultMindfulnessMessages
 import com.awareness.core.domain.model.HudPreferences
+import com.awareness.core.domain.model.HudScale
 import com.awareness.core.domain.model.MindfulnessMessage
 import com.awareness.core.domain.repository.HudPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +19,19 @@ data class HudPersonalizationUiState(
     val initialRevealDelayInput: String = "0",
     val messageDisplayDurationSeconds: Int = 30,
     val messageDisplayDurationInput: String = "30",
+    val hideDurationSeconds: Int = 0,
+    val hideDurationInput: String = "0",
+    val hudOpacityPercent: Int = 85,
+    val hudScale: HudScale = HudScale.STANDARD,
     val selectedMessageIds: Set<String> = DefaultMindfulnessMessages.defaultSelectedIds,
-    val allMessages: List<MindfulnessMessage> = DefaultMindfulnessMessages.all,
+    val customMessages: List<MindfulnessMessage> = emptyList(),
+    val customMessageInput: String = "",
     val errorMessage: String? = null,
     val saveSuccess: Boolean = false
 ) {
+    val allMessages: List<MindfulnessMessage>
+        get() = DefaultMindfulnessMessages.all + customMessages
+
     val isSaveEnabled: Boolean
         get() = selectedMessageIds.isNotEmpty()
 }
@@ -47,7 +56,12 @@ class HudPersonalizationViewModel(
                     initialRevealDelayInput = prefs.initialRevealDelaySeconds.toString(),
                     messageDisplayDurationSeconds = prefs.messageDisplayDurationSeconds,
                     messageDisplayDurationInput = prefs.messageDisplayDurationSeconds.toString(),
-                    selectedMessageIds = prefs.selectedMessageIds
+                    hideDurationSeconds = prefs.hideDurationSeconds,
+                    hideDurationInput = prefs.hideDurationSeconds.toString(),
+                    hudOpacityPercent = prefs.hudOpacityPercent,
+                    hudScale = prefs.hudScale,
+                    selectedMessageIds = prefs.selectedMessageIds,
+                    customMessages = prefs.customMessages
                 )
             }
         }
@@ -59,6 +73,54 @@ class HudPersonalizationViewModel(
 
     fun onDurationChanged(input: String) {
         _uiState.update { it.copy(messageDisplayDurationInput = input, errorMessage = null) }
+    }
+
+    fun onHideDurationChanged(input: String) {
+        _uiState.update { it.copy(hideDurationInput = input, errorMessage = null) }
+    }
+
+    fun onOpacityChanged(opacity: Int) {
+        _uiState.update { it.copy(hudOpacityPercent = opacity.coerceIn(20, 100)) }
+    }
+
+    fun onScaleSelected(scale: HudScale) {
+        _uiState.update { it.copy(hudScale = scale) }
+    }
+
+    fun onCustomMessageInputChanged(input: String) {
+        _uiState.update { it.copy(customMessageInput = input) }
+    }
+
+    fun addCustomMessage() {
+        val text = _uiState.value.customMessageInput.trim()
+        if (text.isBlank()) return
+
+        viewModelScope.launch {
+            val newMessage = repository.addCustomMessage(text)
+            _uiState.update { current ->
+                current.copy(
+                    customMessages = current.customMessages + newMessage,
+                    selectedMessageIds = current.selectedMessageIds + newMessage.id,
+                    customMessageInput = "",
+                    errorMessage = null
+                )
+            }
+        }
+    }
+
+    fun deleteCustomMessage(id: String) {
+        viewModelScope.launch {
+            repository.deleteCustomMessage(id)
+            _uiState.update { current ->
+                val remainingCustom = current.customMessages.filterNot { it.id == id }
+                val updatedSelected = current.selectedMessageIds - id
+                current.copy(
+                    customMessages = remainingCustom,
+                    selectedMessageIds = updatedSelected,
+                    errorMessage = if (updatedSelected.isEmpty()) "Select at least one message." else null
+                )
+            }
+        }
     }
 
     fun onMessageToggle(messageId: String) {
@@ -84,13 +146,18 @@ class HudPersonalizationViewModel(
 
         val parsedDelay = (state.initialRevealDelayInput.toIntOrNull() ?: 0).coerceIn(0, 3600)
         val parsedDuration = (state.messageDisplayDurationInput.toIntOrNull() ?: 30).coerceIn(5, 300)
+        val parsedHideDuration = (state.hideDurationInput.toIntOrNull() ?: 0).coerceIn(0, 3600)
 
         viewModelScope.launch {
             repository.update(
                 HudPreferences(
                     initialRevealDelaySeconds = parsedDelay,
                     messageDisplayDurationSeconds = parsedDuration,
-                    selectedMessageIds = state.selectedMessageIds
+                    hideDurationSeconds = parsedHideDuration,
+                    hudOpacityPercent = state.hudOpacityPercent,
+                    hudScale = state.hudScale,
+                    selectedMessageIds = state.selectedMessageIds,
+                    customMessages = state.customMessages
                 )
             )
             _uiState.update {
@@ -99,6 +166,8 @@ class HudPersonalizationViewModel(
                     initialRevealDelayInput = parsedDelay.toString(),
                     messageDisplayDurationSeconds = parsedDuration,
                     messageDisplayDurationInput = parsedDuration.toString(),
+                    hideDurationSeconds = parsedHideDuration,
+                    hideDurationInput = parsedHideDuration.toString(),
                     saveSuccess = true
                 )
             }
