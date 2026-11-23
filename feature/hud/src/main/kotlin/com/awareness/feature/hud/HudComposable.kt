@@ -25,8 +25,9 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Visibility-aware HUD Composable adhering strictly to StudioBlank Design System:
- * - When isVisible is false: renders completely empty Box (zero size, zero pixels, touch pass-through preserved).
- * - When isVisible is true: renders sharp 0dp card with 1dp border and monochromatic typography.
+ * - Hidden State: Renders empty Box with zero size when isVisible = false (touch pass-through).
+ * - Visible State: Renders sharp 0dp card with 1dp border and monochromatic typography.
+ * - Recomposition Scoping: Sub-composables isolate 1-second timer text updates.
  */
 @Composable
 fun HudOverlayView(
@@ -58,45 +59,67 @@ fun HudOverlayView(
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Column {
-                if (state.message.isNotEmpty()) {
-                    Text(
-                        text = state.message,
-                        color = StudioBlankColors.TextInverse,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 16.sp
-                    )
-                }
-
-                Text(
-                    text = TimeFormatter.mmss(state.elapsedMillis),
-                    color = StudioBlankColors.TextInverse,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-                if (state.showReelCount) {
-                    Text(
-                        text = "Reels: ${state.reelCount}",
-                        color = StudioBlankColors.TextSecondary,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-
-                if (state.browserDomainLabel != null) {
-                    Text(
-                        text = state.browserDomainLabel!!,
-                        color = StudioBlankColors.TextSecondary,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
+                MessageLine(message = state.message)
+                TimerLine(elapsedMillis = state.elapsedMillis)
+                ReelsLine(reelCount = state.reelCount, showReelCount = state.showReelCount)
+                BrowserDomainLine(domainLabel = state.browserDomainLabel)
             }
         }
+    }
+}
+
+@Composable
+private fun MessageLine(message: String) {
+    if (message.isNotEmpty()) {
+        Text(
+            text = message,
+            color = StudioBlankColors.TextInverse,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 16.sp
+        )
+    }
+}
+
+@Composable
+private fun TimerLine(elapsedMillis: Long) {
+    val formatted = if (elapsedMillis >= 3600_000L) {
+        TimeFormatter.hms(elapsedMillis)
+    } else {
+        TimeFormatter.mmss(elapsedMillis)
+    }
+    Text(
+        text = formatted,
+        color = StudioBlankColors.TextInverse,
+        fontSize = 14.sp,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+}
+
+@Composable
+private fun ReelsLine(reelCount: Int, showReelCount: Boolean) {
+    if (showReelCount) {
+        Text(
+            text = "Reels: $reelCount",
+            color = StudioBlankColors.TextSecondary,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun BrowserDomainLine(domainLabel: String?) {
+    if (domainLabel != null) {
+        Text(
+            text = domainLabel,
+            color = StudioBlankColors.TextSecondary,
+            fontSize = 11.sp,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }

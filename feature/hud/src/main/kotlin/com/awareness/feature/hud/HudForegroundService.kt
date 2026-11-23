@@ -30,8 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - Passive renderer: consumes HudState; zero business logic; never accesses DataStore or accessibility tree directly.
  */
 class HudForegroundService(
-    private val windowManagerProvider: (Context) -> HudWindowManager = { HudWindowManagerImpl(it) },
-    private val hudStateFlowProvider: () -> StateFlow<HudState> = { defaultHudStateFlow }
+    private val windowManagerProvider: (Context) -> HudWindowManager = { HudWindowManagerImpl(it) }
 ) : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -160,5 +159,25 @@ class HudForegroundService(
                 browserDomainLabel = null
             )
         )
+
+        var hudStateFlowProvider: () -> StateFlow<HudState> = { defaultHudStateFlow }
+
+        fun start(context: Context) {
+            val intent = Intent(context, HudForegroundService::class.java).apply {
+                action = ACTION_START
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        fun stop(context: Context) {
+            val intent = Intent(context, HudForegroundService::class.java).apply {
+                action = ACTION_STOP
+            }
+            context.startService(intent)
+        }
     }
 }
