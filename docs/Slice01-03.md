@@ -233,48 +233,72 @@ selectedMessageIds -> reject empty in UI; repository reads fallback if empty/cor
 
 ### File & Folder Mapping
 
-```
-:core:domain        model/TargetApp.kt
-                    model/AwarenessEvent.kt
-                    model/SessionState.kt
-                    model/HudState.kt
-                    model/MindfulnessMessage.kt
-                    model/DefaultMindfulnessMessages.kt
-                    model/HudPreferences.kt
-                    model/SessionSummary.kt
-                    model/DailyAggregate.kt
-                    repository/SettingsRepository.kt
-                    repository/HudPreferencesRepository.kt
-                    repository/SessionRepository.kt
-                    usecase/ObserveHudStateUseCase.kt
-                    usecase/GetDailyStatsUseCase.kt
-:core:design-system theme/Theme.kt
-                    tokens/Color.kt
-                    tokens/Typography.kt
-                    tokens/Spacing.kt
-                    components/StudioBlankButton.kt
-                    components/StudioBlankCard.kt
-                    components/StudioBlankCheckbox.kt
-                    components/StudioBlankTextField.kt
-                    components/StudioBlankChip.kt
-:core:presentation  permission/PermissionState.kt
-                    permission/PermissionRequestCoordinator.kt
-                    util/TimeFormatter.kt
-                    util/MessageRotation.kt
-                    util/BrowserDomainFormatter.kt
-:core:data          datastore/SettingsDataStore.kt
-                    datastore/HudPreferencesDataStore.kt
-                    repository/SettingsRepositoryImpl.kt
-                    repository/HudPreferencesRepositoryImpl.kt
-:feature:settings   SettingsActivity.kt
-                    SettingsScreen.kt
-                    SettingsViewModel.kt
-                    HudPersonalizationScreen.kt
-                    HudPersonalizationViewModel.kt
-:app                AppApplication.kt
-                    MainActivity.kt
-                    AndroidManifest.xml
-```
+#### 1. Backend (Pure Kotlin Domain Logic & Repository Contracts)
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/TargetApp.kt` `[New]` `[Backend]` — Central domain enum defining monitored packages, classification (social vs browser), and display titles.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/AwarenessEvent.kt` `[New]` `[Backend]` — Frozen sealed event hierarchy emitted across the unidirectional pipeline (`SessionStarted`, `SessionEnded`, `ReelScrolled`, `BrowserDomainInferred`).
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/SessionState.kt` `[New]` `[Backend]` — Frozen state machine model representing `Idle` and `Active` sessions.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudState.kt` `[New]` `[Backend]` — Frozen 6-field overlay presentation state consumed by the HUD renderer.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/MindfulnessMessage.kt` `[New]` `[Backend]` — Domain data class modeling rotating mindfulness copy.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/DefaultMindfulnessMessages.kt` `[New]` `[Backend]` — Built-in catalog of mindfulness messages and safe fallback selections.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudPreferences.kt` `[New]` `[Backend]` — Domain model for personalization with monotonic time conversions and boundary clamping.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/SessionSummary.kt` `[New]` `[Backend]` — Immutable session data contract for analytics and Room persistence.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/model/DailyAggregate.kt` `[New]` `[Backend]` — Aggregated daily usage model contract.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/repository/SettingsRepository.kt` `[New]` `[Backend]` — Interface contract for onboarding and companion settings state.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/repository/HudPreferencesRepository.kt` `[New]` `[Backend]` — Interface contract for reading and updating HUD personalization preferences.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/repository/SessionRepository.kt` `[New]` `[Backend]` — Interface contract for session storage and stats observation.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/ObserveHudStateUseCase.kt` `[New]` `[Backend]` — Domain use case contract combining session state and preferences.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/GetDailyStatsUseCase.kt` `[New]` `[Backend]` — Domain use case contract querying daily aggregates.
+
+#### 2. Database / Local Persistence (DataStore)
+- `core/data/src/main/kotlin/com/awareness/core/data/datastore/SettingsDataStore.kt` `[New]` `[Database/Persistence]` — DataStore Preferences wrapper handling onboarding completion state.
+- `core/data/src/main/kotlin/com/awareness/core/data/datastore/HudPreferencesDataStore.kt` `[New]` `[Database/Persistence]` — DataStore Preferences wrapper storing reveal delay, display duration, and selected message IDs.
+- `core/data/src/main/kotlin/com/awareness/core/data/repository/SettingsRepositoryImpl.kt` `[New]` `[Database/Persistence]` — Repository implementation persisting and exposing onboarding state via Flow.
+- `core/data/src/main/kotlin/com/awareness/core/data/repository/HudPreferencesRepositoryImpl.kt` `[New]` `[Database/Persistence]` — Repository implementation enforcing validation, clamping (0–3600s, 5–300s), and fallback defaults on corrupt or empty IDs.
+
+#### 3. Frontend (StudioBlank Design System, Presentation & Companion UI)
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/theme/Theme.kt` `[New]` `[Frontend]` — StudioBlank monochromatic Material3 theme provider.
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/tokens/Color.kt` `[New]` `[Frontend]` — StudioBlank color tokens (`#0A0A0A`, `#FAFAFA`, `#D4D4D8`, `#E5E5E5`, `#F4F4F5`, functional accents).
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/tokens/Typography.kt` `[New]` `[Frontend]` — Typography tokens specifying Inter (Headlines/Body) and IBM Plex Mono (Timer/Numeric).
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/tokens/Spacing.kt` `[New]` `[Frontend]` — 16dp base grid spacing tokens and strict 0dp `RectangleShape` token.
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/components/StudioBlankButton.kt` `[New]` `[Frontend]` — Flat, zero-radius buttons (Primary, Secondary, Ghost, Destructive).
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/components/StudioBlankCard.kt` `[New]` `[Frontend]` — Flat, 0dp elevation card container with 1dp border.
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/components/StudioBlankCheckbox.kt` `[New]` `[Frontend]` — Sharp square 0dp checkbox with checkmark glyph.
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/components/StudioBlankTextField.kt` `[New]` `[Frontend]` — Flat input field with sharp underline and mono support.
+- `core/design-system/src/main/kotlin/com/awareness/core/designsystem/components/StudioBlankChip.kt` `[New]` `[Frontend]` — Sharp rectangular chip for status indicators and filters.
+- `core/presentation/src/main/kotlin/com/awareness/core/presentation/permission/PermissionState.kt` `[New]` `[Frontend]` — UI state model aggregating status across 4 system permissions.
+- `core/presentation/src/main/kotlin/com/awareness/core/presentation/permission/PermissionRequestCoordinator.kt` `[New]` `[Frontend]` — Coordinator querying system permission managers and generating intent dispatches.
+- `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/TimeFormatter.kt` `[New]` `[Frontend]` — Pure presentation formatter for monotonic time (`MM:SS` and `H:MM:SS`).
+- `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/MessageRotation.kt` `[New]` `[Frontend]` — Utility calculating active message index based on elapsed seconds and duration.
+- `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/BrowserDomainFormatter.kt` `[New]` `[Frontend]` — Utility formatting inferred browser domain into StudioBlank awareness copy.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsActivity.kt` `[New]` `[Frontend]` — Companion activity hosting SettingsScreen in StudioBlank theme.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsScreen.kt` `[New]` `[Frontend]` — Setup Checklist rendering 4 permission cards, status indicators, and HUD personalization summary.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsViewModel.kt` `[New]` `[Frontend]` — State holder coordinating permission evaluation and HUD preference summary.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/HudPersonalizationScreen.kt` `[New]` `[Frontend]` — Personalization screen with delay/duration inputs and interactive message checklist.
+- `feature/settings/src/main/kotlin/com/awareness/feature/settings/HudPersonalizationViewModel.kt` `[New]` `[Frontend]` — ViewModel managing input validation, clamping feedback, and persistence.
+- `app/src/main/kotlin/com/awareness/app/MainActivity.kt` `[New]` `[Frontend]` — Entry point launcher routing into SettingsActivity.
+- `app/src/main/kotlin/com/awareness/app/AppApplication.kt` `[New]` `[Frontend]` — Main Android Application class.
+
+#### 4. Unit Tests
+- `core/domain/src/test/kotlin/com/awareness/core/domain/model/HudPreferencesTest.kt` `[New]` `[Unit Test]` — Unit tests verifying delay and duration boundary clamping, monotonic conversions, and fallback resolution.
+- `core/domain/src/test/kotlin/com/awareness/core/domain/model/DefaultMindfulnessMessagesTest.kt` `[New]` `[Unit Test]` — Unit tests verifying message catalog non-emptiness, uniqueness, and fallback integrity.
+- `core/domain/src/test/kotlin/com/awareness/core/domain/model/TargetAppTest.kt` `[New]` `[Unit Test]` — Unit tests verifying allowlist parsing, social app categorization, and browser detection.
+- `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/TimeFormatterTest.kt` `[New]` `[Unit Test]` — Unit tests verifying `MM:SS` and `H:MM:SS` string formatting across edge timestamps.
+- `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/MessageRotationTest.kt` `[New]` `[Unit Test]` — Unit tests verifying cyclic message rotation index calculation.
+- `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/BrowserDomainFormatterTest.kt` `[New]` `[Unit Test]` — Unit tests verifying domain label formatting.
+- `core/presentation/src/test/kotlin/com/awareness/core/presentation/permission/PermissionStateTest.kt` `[New]` `[Unit Test]` — Unit tests verifying permission state mapping across API levels 26, 30, and 33.
+- `feature/settings/src/test/kotlin/com/awareness/feature/settings/HudPersonalizationViewModelTest.kt` `[New]` `[Unit Test]` — Unit tests verifying delay/duration clamping, save validation, and empty selection blocking (VS01-TS-08, TS-09, TS-10).
+
+#### 5. Integration Tests
+- `core/data/src/test/kotlin/com/awareness/core/data/repository/HudPreferencesModelResolutionTest.kt` `[New]` `[Integration Test]` — DataStore repository integration tests verifying default value generation, corrupt ID fallback, and boundary clamping (VS01-TS-06, TS-11, TS-12).
+- `app/src/test/kotlin/com/awareness/app/ManifestSecurityTest.kt` `[New]` `[Integration Test]` — Security audit integration test verifying that `android.permission.INTERNET` is never declared (VS01-TS-05).
+
+#### 6. Config & Build
+- `settings.gradle.kts` `[New]` `[Config/Build]` — Root settings configuring multi-module project structure.
+- `build.gradle.kts` `[New]` `[Config/Build]` — Root build script configuring Android and Kotlin Gradle plugins.
+- `gradle.properties` `[New]` `[Config/Build]` — Global properties enabling AndroidX and non-transitive R classes.
+- `gradle/libs.versions.toml` `[New]` `[Config/Build]` — Centralized Version Catalog managing all dependencies.
+- `app/build.gradle.kts` `[New]` `[Config/Build]` — Application module build script.
+- `app/src/main/AndroidManifest.xml` `[New]` `[Config/Build]` — App manifest declaring required sensor permissions with strictly zero INTERNET permission.
 
 ---
 
@@ -384,20 +408,28 @@ object TargetAppAllowlist {
 
 ### File & Folder Mapping
 
-```
-:core:accessibility  TargetAppAllowlist.kt
-                     AccessibilityEventBus.kt
-                     AwarenessAccessibilityService.kt
-                     res/values/strings.xml
-                     res/xml/accessibility_service_config.xml
-                     test/TargetAppAllowlistTest.kt
-                     test/AccessibilityEventBusTest.kt
-                     test/AwarenessAccessibilityServiceTest.kt
-                     test/AccessibilityConfigVerificationTest.kt
-:app                 AndroidManifest.xml (AwarenessAccessibilityService declaration)
-                     build.gradle.kts (added :core:accessibility dependency)
-settings.gradle.kts  (included :core:accessibility)
-```
+#### 1. Backend (Sensors, Reactive Bus & Allowlist Filtering)
+- `core/accessibility/src/main/kotlin/com/awareness/core/accessibility/TargetAppAllowlist.kt` `[New]` `[Backend]` — Single source of truth defining monitored social applications and browsers, with validation utilities (`isTargetApp`, `isBrowser`, `isSocialApp`).
+- `core/accessibility/src/main/kotlin/com/awareness/core/accessibility/AccessibilityEventBus.kt` `[New]` `[Backend]` — Non-blocking, bounded event bus (`capacity = 16`, `DROP_OLDEST`) emitting awareness events across modules.
+- `core/accessibility/src/main/kotlin/com/awareness/core/accessibility/AwarenessAccessibilityService.kt` `[New]` `[Backend]` — Zero-overhead accessibility sensor listening to `TYPE_WINDOW_STATE_CHANGED`, maintaining session transition tracking and zero content scraping.
+
+#### 2. Frontend / Presentation Resources
+- `core/accessibility/src/main/res/values/strings.xml` `[New]` `[Frontend]` — User-facing description for system accessibility service settings page.
+
+#### 3. Unit Tests
+- `core/accessibility/src/test/kotlin/com/awareness/core/accessibility/TargetAppAllowlistTest.kt` `[New]` `[Unit Test]` — Unit tests asserting allowlist set integrity, disjoint classification between browsers and social apps, and lookup helpers.
+- `core/accessibility/src/test/kotlin/com/awareness/core/accessibility/AccessibilityEventBusTest.kt` `[New]` `[Unit Test]` — Unit tests verifying event emission, collector reception, and buffer overflow dropping oldest events.
+
+#### 4. Integration Tests
+- `core/accessibility/src/test/kotlin/com/awareness/core/accessibility/AwarenessAccessibilityServiceTest.kt` `[New]` `[Integration Test]` — Robolectric integration test verifying `SessionStarted` and `SessionEnded` state transitions, rapid switching, interruption, and destruction.
+- `core/accessibility/src/test/kotlin/com/awareness/core/accessibility/AccessibilityConfigVerificationTest.kt` `[New]` `[Integration Test]` — Integration tests verifying that XML package filter precisely matches allowlist and codebase contains zero `UsageStatsManager` references.
+
+#### 5. Config & Build
+- `core/accessibility/build.gradle.kts` `[New]` `[Config/Build]` — Module build configuration with Robolectric, Coroutines, and Android library dependencies.
+- `core/accessibility/src/main/res/xml/accessibility_service_config.xml` `[New]` `[Config/Build]` — System accessibility XML configuration enforcing `typeWindowStateChanged` and `packageNames` filtering.
+- `settings.gradle.kts` `[Modified]` `[Config/Build]` — Added `:core:accessibility` to Gradle root module build hierarchy.
+- `app/build.gradle.kts` `[Modified]` `[Config/Build]` — Added `:core:accessibility` dependency to application layer.
+- `app/src/main/AndroidManifest.xml` `[Modified]` `[Config/Build]` — Declared `AwarenessAccessibilityService` with `BIND_ACCESSIBILITY_SERVICE` permission and XML config metadata.
 
 ---
 

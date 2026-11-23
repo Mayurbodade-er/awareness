@@ -44,7 +44,11 @@ Development must proceed in **strict sequential vertical slices** (VS-01 through
    - Run forbidden API grep verification (§6.2).
    - Verify zero lint regressions (`NoTextReadDetector`).
 5. **Slice Document Mapping Update:**
-   - Verify and update the `### File & Folder Mapping` section in the respective slice document (`docs/SliceXX-YY.md`) with all files created or modified for that slice.
+   - Verify and update the `### File & Folder Mapping` section in the respective slice document (`docs/SliceXX-YY.md`) with every file created or modified for that slice.
+   - For every file, explicitly document:
+     - **Path & Status:** `[New]` or `[Modified]`
+     - **Layer Classification:** `[Frontend]`, `[Backend]`, `[Database/Persistence]`, `[Unit Test]`, `[Integration Test]`, or `[Config/Build]`
+     - **Architectural Rationale:** Concise explanation of why the file was created or modified.
 6. **Gate Sign-off:** Confirm every Acceptance Criterion and Edge Case mitigation is met before advancing to the next slice.
 
 ### 1.2 GitHub Architecture, Branching Model & Quality Gates
@@ -484,5 +488,5 @@ A slice is considered **Done** and ready for sign-off only when:
 3. All unit, integration, and API tests for that slice pass with 100% green status.
 4. Static grep verification checks pass with zero violations.
 5. No cross-slice frozen contracts (§4) have been modified or breached.
-6. The `### File & Folder Mapping` section in the respective slice document (`docs/SliceXX-YY.md`) is verified and updated.
+6. The `### File & Folder Mapping` section in the respective slice document (`docs/SliceXX-YY.md`) is verified and updated with complete categorization (`[Frontend]`, `[Backend]`, `[Database/Persistence]`, `[Unit Test]`, `[Integration Test]`, `[Config/Build]`), status (`[New]`/`[Modified]`), and architectural rationale for each file.
 7. The next slice is unblocked and clean to begin.
