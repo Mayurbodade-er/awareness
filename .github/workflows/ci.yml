@@ -27,7 +27,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Audit: Zero Internet Permission
+      - name: "Audit: Zero Internet Permission"
         run: |
           echo "Checking manifests for forbidden INTERNET permission..."
           TARGET_DIRS=$(ls -d app core feature 2>/dev/null || true)
@@ -39,7 +39,7 @@ jobs:
           fi
           echo "PASSED: Zero internet permission detected."
 
-      - name: Audit: Zero Forbidden Schedulers & Polling
+      - name: "Audit: Zero Forbidden Schedulers & Polling"
         run: |
           echo "Checking for AlarmManager, postDelayed, UsageStatsManager, setRepeating..."
           TARGET_DIRS=$(ls -d app core feature 2>/dev/null || true)
@@ -51,7 +51,7 @@ jobs:
           fi
           echo "PASSED: Zero forbidden schedulers detected."
 
-      - name: Audit: StudioBlank Design System (0dp Radius & Flat 0dp Elevation)
+      - name: "Audit: StudioBlank Design System (0dp Radius & Flat 0dp Elevation)"
         run: |
           echo "Checking for non-zero RoundedCornerShape & elevation..."
           TARGET_DIRS=$(ls -d app core feature core/design-system 2>/dev/null || true)
