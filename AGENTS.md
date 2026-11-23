@@ -451,26 +451,26 @@ Before closing any slice, the following bash checks must be run. Any non-zero ou
 
 ```bash
 # 1. Verify zero calls to text/contentDescription on AccessibilityNodeInfo
-grep -rnE "\.(text|contentDescription|extras)\b" \
+grep -rnE --exclude-dir=build "\.(text|contentDescription|extras)\b" \
   core/accessibility/ feature/hud/ \
   && echo "FAILED: Forbidden accessibility text access detected" || echo "PASSED: No text access"
 
 # 2. Verify no background polling or forbidden schedulers
-grep -rnE "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" \
+grep -rnE --exclude-dir=build "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" \
   core/ feature/ app/ \
   && echo "FAILED: Forbidden scheduler/polling detected" || echo "PASSED: No forbidden schedulers"
 
 # 3. Verify no INTERNET permission declared in AndroidManifest
-grep -rn "android.permission.INTERNET" app/ core/ feature/ \
+grep -rn --exclude-dir=build "android.permission.INTERNET" app/ core/ feature/ \
   && echo "FAILED: INTERNET permission detected" || echo "PASSED: No INTERNET permission"
 
 # 4. Verify StudioBlank Design: ZERO Rounded Corners
-grep -rnE "RoundedCornerShape\(([^0]|0\.[1-9])" \
+grep -rnE --exclude-dir=build "RoundedCornerShape\(([^0]|0\.[1-9])" \
   core/design-system/ feature/ app/ \
   && echo "FAILED: Rounded corners detected! StudioBlank requires 0.dp (RectangleShape)" || echo "PASSED: Strict 0px radius"
 
 # 5. Verify StudioBlank Design: ZERO Shadows / Elevation
-grep -rnE "elevation = [1-9]" \
+grep -rnE --exclude-dir=build "elevation = [1-9]" \
   core/design-system/ feature/ app/ \
   && echo "FAILED: Elevation detected! StudioBlank requires flat 0.dp" || echo "PASSED: Flat 0dp elevation"
 ```
@@ -495,11 +495,80 @@ A slice is considered **Done** and ready for sign-off only when:
 > **Mandatory Rule:** Upon completing or modifying any slice, the agent/developer MUST log all created and modified folders and files below with the architectural reason for each change.
 
 ### VS-01: Companion Shell, Permissions, HUD Preferences & Domain Foundation
-- **Status:** *Pending Execution*
+- **Status:** **Completed**
 - **Folders Created / Modified:**
-  - *(Log entries populated upon slice execution)*
+  - `gradle/`: Centralized dependency Version Catalog (`libs.versions.toml`) and Gradle wrapper.
+  - `core/domain/`: Pure Kotlin module holding frozen state models, event hierarchies, and repository contracts.
+  - `core/design-system/`: StudioBlank design tokens (colors, typography, spacing) and flat, zero-radius components.
+  - `core/presentation/`: Presentation utility formatters (time, message rotation, domain) and permission coordinators.
+  - `core/data/`: DataStore preferences implementation and repositories.
+  - `feature/settings/`: Setup checklist permission cards, HUD personalization screen, ViewModels, and activity.
+  - `app/`: Application entry point, launcher activity, and manifest assembly without internet permission.
 - **Files Created / Modified:**
-  - *(Log entries populated upon slice execution, specifying path and architectural rationale)*
+  - `gradle/libs.versions.toml`: Centralized Version Catalog configuring AGP, Kotlin 2.0, Compose, DataStore, Coroutines, and Testing libraries.
+  - `settings.gradle.kts`: Multi-module project root including `:app`, `:core:domain`, `:core:design-system`, `:core:presentation`, `:core:data`, and `:feature:settings`.
+  - `build.gradle.kts`: Root Gradle build configuring AGP, Kotlin, and Compose plugins.
+  - `gradle.properties`: Enables `android.useAndroidX=true` and `android.nonTransitiveRClass=true`.
+  - `core/domain/build.gradle.kts`: Pure Kotlin library module build file with zero Android framework dependencies.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/TargetApp.kt`: Target application allowlist and browser identification.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/AwarenessEvent.kt`: Frozen cross-slice sealed event hierarchy (`SessionStarted`, `SessionEnded`, `ReelScrolled`, `BrowserDomainInferred`).
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/SessionState.kt`: Frozen sealed session state machine (`Idle`, `Active`).
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudState.kt`: Frozen 6-field HUD overlay state representation.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/MindfulnessMessage.kt`: Model for mindfulness rotation messages.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/DefaultMindfulnessMessages.kt`: Default message catalog and fallback defaults.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/HudPreferences.kt`: Personalization preferences with reveal delay and display duration.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/SessionSummary.kt`: Data contract for persisted session aggregates.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/model/DailyAggregate.kt`: Daily analytics model.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/repository/SettingsRepository.kt`: Interface for onboarding settings.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/repository/HudPreferencesRepository.kt`: Repository interface for HUD personalization.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/repository/SessionRepository.kt`: Repository interface for session analytics persistence.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/ObserveHudStateUseCase.kt`: Use case interface for reactive HUD state flow.
+  - `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/GetDailyStatsUseCase.kt`: Use case interface for 7-day analytics.
+  - `core/design-system/build.gradle.kts`: StudioBlank design tokens and Compose library build file.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/theme/Color.kt`: StudioBlank monochromatic palette (`#0A0A0A`, `#FAFAFA`, `#D4D4D8`).
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/theme/Type.kt`: Inter and IBM Plex Mono typography definitions.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/theme/Spacing.kt`: 16dp base grid spacing and `StudioBlankShape = RectangleShape`.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/theme/Theme.kt`: Compose MaterialTheme binding for StudioBlank.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/component/StudioBlankButton.kt`: Flat 0dp radius button with Primary, Secondary, Ghost, and Destructive variants.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/component/StudioBlankCard.kt`: Flat 0dp radius card with `#FFFFFF` fill and `1.dp #E5E5E5` border.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/component/StudioBlankCheckbox.kt`: Flat 0dp radius 18dp square checkbox.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/component/StudioBlankTextField.kt`: Flat 0dp radius 40dp height text input.
+  - `core/design-system/src/main/kotlin/com/awareness/core/designsystem/component/StudioBlankChip.kt`: Flat 0dp radius uppercase status and filter chip.
+  - `core/presentation/build.gradle.kts`: Android library build file for presentation utilities.
+  - `core/presentation/src/main/kotlin/com/awareness/core/presentation/permission/PermissionState.kt`: Data model capturing 4 live permission states.
+  - `core/presentation/src/main/kotlin/com/awareness/core/presentation/permission/PermissionRequestCoordinator.kt`: System intent dispatcher for Accessibility, Overlay, Battery, and Notification permissions.
+  - `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/TimeFormatter.kt`: Monotonic `MM:SS` and `H:MM:SS` time formatters.
+  - `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/MessageRotation.kt`: Monotonic message index rotation calculator.
+  - `core/presentation/src/main/kotlin/com/awareness/core/presentation/util/BrowserDomainFormatter.kt`: Browser domain HUD label formatter.
+  - `core/data/build.gradle.kts`: DataStore preferences and data persistence build file.
+  - `core/data/src/main/kotlin/com/awareness/core/data/datastore/SettingsDataStore.kt`: DataStore instance definition.
+  - `core/data/src/main/kotlin/com/awareness/core/data/datastore/HudPreferencesDataStore.kt`: DataStore preference keys.
+  - `core/data/src/main/kotlin/com/awareness/core/data/repository/SettingsRepositoryImpl.kt`: DataStore implementation of SettingsRepository.
+  - `core/data/src/main/kotlin/com/awareness/core/data/repository/HudPreferencesRepositoryImpl.kt`: DataStore implementation of HudPreferencesRepository with validation, clamping, and fallback.
+  - `feature/settings/build.gradle.kts`: Settings feature module build file.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/permission/AccessibilityPermissionCard.kt`: StudioBlank accessibility permission setup card.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/permission/OverlayPermissionCard.kt`: StudioBlank overlay permission setup card.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/permission/BatteryOptimizationCard.kt`: StudioBlank battery Doze exemption setup card.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/permission/NotificationPermissionCard.kt`: StudioBlank notifications permission setup card.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/hud/HudPersonalizationViewModel.kt`: ViewModel managing reveal delay and message duration validation.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/hud/HudPersonalizationScreen.kt`: StudioBlank HUD Personalization screen with message checklist.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsViewModel.kt`: ViewModel coordinating permission state and HUD preferences.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsScreen.kt`: Companion UI screen with setup checklist.
+  - `feature/settings/src/main/kotlin/com/awareness/feature/settings/SettingsActivity.kt`: Activity hosting SettingsScreen.
+  - `app/build.gradle.kts`: Application module build file.
+  - `app/src/main/AndroidManifest.xml`: Application manifest declaring permissions without INTERNET.
+  - `app/src/main/kotlin/com/awareness/app/AppApplication.kt`: Application class.
+  - `app/src/main/kotlin/com/awareness/app/MainActivity.kt`: Entry activity dispatching to SettingsActivity.
+  - `core/domain/src/test/kotlin/com/awareness/core/domain/model/HudPreferencesTest.kt`: Unit tests for clamping, monotonic millis, and fallback.
+  - `core/domain/src/test/kotlin/com/awareness/core/domain/model/DefaultMindfulnessMessagesTest.kt`: Unit tests for message catalog integrity.
+  - `core/domain/src/test/kotlin/com/awareness/core/domain/model/TargetAppTest.kt`: Unit tests for allowlist filtering and classification.
+  - `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/TimeFormatterTest.kt`: Unit tests for `MM:SS` and `H:MM:SS` formatting.
+  - `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/MessageRotationTest.kt`: Unit tests for message rotation cycles.
+  - `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/BrowserDomainFormatterTest.kt`: Unit tests for domain labels.
+  - `core/presentation/src/test/kotlin/com/awareness/core/presentation/permission/PermissionStateTest.kt`: Unit tests for permission state mapping.
+  - `feature/settings/src/test/kotlin/com/awareness/feature/settings/HudPersonalizationViewModelTest.kt`: Unit & integration tests for delay/duration clamping, save validation, and empty selection rejection (VS01-TS-08, TS-09, TS-10).
+  - `core/data/src/test/kotlin/com/awareness/core/data/repository/HudPreferencesModelResolutionTest.kt`: Integration tests for default values, corrupt ID fallback, and delay translation (VS01-TS-06, TS-11, TS-12).
+  - `app/src/test/kotlin/com/awareness/app/ManifestSecurityTest.kt`: Security audit test verifying zero `INTERNET` permission (VS01-TS-05).
 
 ---
 
