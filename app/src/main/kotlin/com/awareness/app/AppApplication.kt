@@ -56,11 +56,14 @@ class AppApplication : Application() {
         // Automatically start or stop HUD foreground service on session transitions
         applicationScope.launch {
             sessionOrchestrator.sessionState.collect { state ->
+                android.util.Log.e("AppApp", "SessionState collection received: $state")
                 when (state) {
                     is SessionState.Active -> {
+                        android.util.Log.e("AppApp", "Starting HudForegroundService for ${state.packageName}, revealDelay=${state.revealDelayMillisSnapshot}ms")
                         HudForegroundService.start(applicationContext)
                     }
                     is SessionState.Idle -> {
+                        android.util.Log.e("AppApp", "Stopping HudForegroundService on Idle")
                         HudForegroundService.stop(applicationContext)
                     }
                 }

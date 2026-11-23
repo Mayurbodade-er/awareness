@@ -43,6 +43,7 @@ class HudForegroundService(
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        android.util.Log.e("HudService", "onStartCommand: action=${intent?.action}, startId=$startId")
         when (intent?.action) {
             ACTION_STOP -> {
                 stopForegroundSafely()
@@ -70,8 +71,9 @@ class HudForegroundService(
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
-        } catch (_: Exception) {
-            // ForegroundServiceStartNotAllowedException on Android 12+ if background restricted
+            android.util.Log.e("HudService", "startForeground succeeded")
+        } catch (e: Exception) {
+            android.util.Log.e("HudService", "startForeground failed", e)
             stopSelf()
         }
     }
@@ -88,11 +90,13 @@ class HudForegroundService(
                 }
             }
             composeView = view
-            hudWindowManager?.attach(view)
+            val result = hudWindowManager?.attach(view)
+            android.util.Log.e("HudService", "hudWindowManager.attach result: $result")
         }
     }
 
     private fun stopForegroundSafely() {
+        android.util.Log.e("HudService", "stopForegroundSafely called")
         hudWindowManager?.remove()
         hudWindowManager = null
         composeView = null
@@ -106,11 +110,13 @@ class HudForegroundService(
 
     override fun onTimeout(startId: Int, fgsType: Int) {
         super.onTimeout(startId, fgsType)
+        android.util.Log.e("HudService", "onTimeout called! startId=$startId, fgsType=$fgsType")
         stopForegroundSafely()
         stopSelf()
     }
 
     override fun onDestroy() {
+        android.util.Log.e("HudService", "onDestroy called")
         stopForegroundSafely()
         serviceScope.cancel()
         super.onDestroy()
