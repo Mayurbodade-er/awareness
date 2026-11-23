@@ -3,9 +3,14 @@ name: Awareness CI/CD Pipeline
 on:
   push:
     branches: [ staging, main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ staging ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -151,3 +156,16 @@ jobs:
           name: awareness-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: ignore
+
+      # ----------------------------------------------------------------------
+      # Tag Push: Automatically Attach Compiled APK to GitHub Release Page
+      # ----------------------------------------------------------------------
+      - name: Attach APK to GitHub Release
+        if: steps.check_gradle.outputs.has_gradlew == 'true' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
