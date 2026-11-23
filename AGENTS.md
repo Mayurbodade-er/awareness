@@ -48,6 +48,52 @@ Development must proceed in **strict sequential vertical slices** (VS-01 through
    - Explicitly document the architectural rationale explaining *why* each file or folder was created or modified.
 6. **Gate Sign-off:** Confirm every Acceptance Criterion and Edge Case mitigation is met before advancing to the next slice.
 
+### 1.2 GitHub Architecture, Branching Model & Quality Gates
+
+Development and version control on GitHub must follow a **Staged Trunk-Based Workflow** within a **Modular Android Monorepo**:
+
+```
+       [ slice/vs-01 ] ──► PR ──┐
+                                ▼
+(origin) ───────────────────► staging ───────────────────► main (Production / v1.0)
+                                ▲            ▲
+       [ slice/vs-02 ] ──► PR ──┘            │
+                                  (Gate Sign-off & Audit)
+```
+
+#### 1. Branch Topology & Responsibilities
+- **`main` (Production & Releases):**
+  - Protected branch representing verified, production-ready releases (e.g., v1.0 milestone).
+  - No direct commits. Merged exclusively from `staging` following complete slice roadmap sign-off.
+- **`staging` (Integration Baseline):**
+  - Primary working and integration branch for active development.
+  - Slices merge into `staging` via Pull Requests once all slice acceptance criteria, tests, and audits pass.
+- **`slice/vs-XX` (Vertical Slice Branches):**
+  - Ephemeral feature branches cut from `staging` (e.g., `slice/vs-01`).
+  - Isolated to the specific files, tests, and documentation of that slice.
+  - Merged into `staging` via Pull Request upon reaching Definition of Done (§7).
+
+#### 2. Repository Architecture: Modular Android Monorepo
+The codebase is structured into 11 decoupled Gradle modules with unidirectional dependencies:
+- `:app`: Application entry point, DI root, manifest assembly.
+- `:feature:hud`: Passive overlay Foreground Service (FGS) renderer.
+- `:feature:settings`: Companion permissions and HUD personalization UI.
+- `:feature:stats`: Local session persistence and stats dashboard UI.
+- `:core:accessibility`: Event-driven system accessibility sensor.
+- `:core:overlay`: WindowManager host and ComposeView overlay coordinator.
+- `:core:presentation`: Permission coordinator, time formatters, and rotation logic.
+- `:core:data`: Room database and DataStore preferences implementations.
+- `:core:design-system`: StudioBlank design tokens and flat, zero-radius components.
+- `:core:domain`: Pure Kotlin business logic and frozen state machine (zero Android framework dependencies).
+
+#### 3. GitHub CI/CD Quality Gates & Automated Audits
+Every commit and Pull Request must pass automated validation before merging into `staging`:
+- **Automated Test Gate:** All unit and integration tests allocated to merged slices pass (targeting 120 tests total).
+- **Privacy Gate:** Custom lint rule `NoTextReadDetector` fails the build if `node.text`, `node.contentDescription`, or `node.extras` is accessed.
+- **Security Gate:** CI grep fails if `android.permission.INTERNET` is detected in any manifest.
+- **Battery Gate:** CI grep fails if forbidden schedulers (`AlarmManager`, `postDelayed`, `UsageStatsManager`, `setRepeating`) are introduced.
+- **Design System Gate:** CI grep fails if rounded corners (`RoundedCornerShape`) or non-zero elevations are introduced.
+
 ---
 
 ## 2. System Architecture & Invariants
