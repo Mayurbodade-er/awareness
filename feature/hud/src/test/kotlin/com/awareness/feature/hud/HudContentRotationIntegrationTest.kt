@@ -167,6 +167,12 @@ private class FakePrefsRepo : HudPreferencesRepository {
     override suspend fun setInitialRevealDelaySeconds(seconds: Int) {}
     override suspend fun setMessageDisplayDurationSeconds(seconds: Int) {}
     override suspend fun setSelectedMessageIds(ids: Set<String>) {}
+    override suspend fun setHideDurationSeconds(seconds: Int) {}
+    override suspend fun setHudOpacityPercent(percent: Int) {}
+    override suspend fun setHudScale(scale: com.awareness.core.domain.model.HudScale) {}
+    override suspend fun addCustomMessage(text: String): com.awareness.core.domain.model.MindfulnessMessage =
+        com.awareness.core.domain.model.MindfulnessMessage("id", text)
+    override suspend fun deleteCustomMessage(id: String) {}
 }
 
 private class FakeSessRepo : SessionRepository {

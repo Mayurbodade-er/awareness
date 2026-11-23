@@ -106,6 +106,58 @@ class HudPersonalizationViewModelTest {
         assertEquals(300, viewModel.uiState.value.messageDisplayDurationSeconds)
         assertEquals(300, fakeRepository.lastUpdatedPrefs?.messageDisplayDurationSeconds)
     }
+
+    @Test
+    fun `saving periodic nudge hide duration clamps between 0 and 3600`() = runTest {
+        viewModel.onHideDurationChanged("-10")
+        viewModel.save()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, viewModel.uiState.value.hideDurationSeconds)
+        assertEquals(0, fakeRepository.lastUpdatedPrefs?.hideDurationSeconds)
+
+        viewModel.onHideDurationChanged("5000")
+        viewModel.save()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(3600, viewModel.uiState.value.hideDurationSeconds)
+        assertEquals(3600, fakeRepository.lastUpdatedPrefs?.hideDurationSeconds)
+    }
+
+    @Test
+    fun `changing opacity and scale updates uiState and persists on save`() = runTest {
+        viewModel.onOpacityChanged(50)
+        viewModel.onScaleSelected(com.awareness.core.domain.model.HudScale.LARGE)
+        viewModel.save()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(50, viewModel.uiState.value.hudOpacityPercent)
+        assertEquals(com.awareness.core.domain.model.HudScale.LARGE, viewModel.uiState.value.hudScale)
+        assertEquals(50, fakeRepository.lastUpdatedPrefs?.hudOpacityPercent)
+        assertEquals(com.awareness.core.domain.model.HudScale.LARGE, fakeRepository.lastUpdatedPrefs?.hudScale)
+    }
+
+    @Test
+    fun `adding and deleting custom mindfulness message updates state and repository`() = runTest {
+        viewModel.onCustomMessageInputChanged("Breathe deeply.")
+        viewModel.addCustomMessage()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val stateAfterAdd = viewModel.uiState.value
+        assertEquals("", stateAfterAdd.customMessageInput)
+        assertEquals(1, stateAfterAdd.customMessages.size)
+        assertEquals("Breathe deeply.", stateAfterAdd.customMessages[0].text)
+        assertTrue(stateAfterAdd.selectedMessageIds.contains(stateAfterAdd.customMessages[0].id))
+
+        // Delete custom message
+        val addedId = stateAfterAdd.customMessages[0].id
+        viewModel.deleteCustomMessage(addedId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val stateAfterDelete = viewModel.uiState.value
+        assertTrue(stateAfterDelete.customMessages.isEmpty())
+        assertFalse(stateAfterDelete.selectedMessageIds.contains(addedId))
+    }
 }
 
 private class FakeHudPreferencesRepository : HudPreferencesRepository {
@@ -129,5 +181,33 @@ private class FakeHudPreferencesRepository : HudPreferencesRepository {
 
     override suspend fun setSelectedMessageIds(ids: Set<String>) {
         _prefs.value = _prefs.value.copy(selectedMessageIds = ids)
+    }
+
+    override suspend fun setHideDurationSeconds(seconds: Int) {
+        _prefs.value = _prefs.value.copy(hideDurationSeconds = seconds.coerceIn(0, 3600))
+    }
+
+    override suspend fun setHudOpacityPercent(percent: Int) {
+        _prefs.value = _prefs.value.copy(hudOpacityPercent = percent.coerceIn(20, 100))
+    }
+
+    override suspend fun setHudScale(scale: com.awareness.core.domain.model.HudScale) {
+        _prefs.value = _prefs.value.copy(hudScale = scale)
+    }
+
+    override suspend fun addCustomMessage(text: String): com.awareness.core.domain.model.MindfulnessMessage {
+        val msg = com.awareness.core.domain.model.MindfulnessMessage("custom_test_${_prefs.value.customMessages.size + 1}", text)
+        _prefs.value = _prefs.value.copy(
+            customMessages = _prefs.value.customMessages + msg,
+            selectedMessageIds = _prefs.value.selectedMessageIds + msg.id
+        )
+        return msg
+    }
+
+    override suspend fun deleteCustomMessage(id: String) {
+        _prefs.value = _prefs.value.copy(
+            customMessages = _prefs.value.customMessages.filterNot { it.id == id },
+            selectedMessageIds = _prefs.value.selectedMessageIds - id
+        )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.awareness.core.designsystem.theme.AwarenessTheme
 import com.awareness.core.designsystem.theme.StudioBlankColors
+import com.awareness.core.domain.model.HudScale
 import com.awareness.core.domain.model.HudState
 import com.awareness.core.presentation.util.TimeFormatter
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Visibility-aware HUD Composable adhering strictly to StudioBlank Design System:
  * - Hidden State: Renders empty Box with zero size when isVisible = false (touch pass-through).
  * - Visible State: Renders sharp 0dp card with 1dp border and monochromatic typography.
+ * - Sizing & Opacity: Customizable via HudState.opacityPercent and HudState.scale.
  * - Recomposition Scoping: Sub-composables isolate 1-second timer text updates.
  */
 @Composable
@@ -42,13 +44,21 @@ fun HudOverlayView(
         return
     }
 
+    val (maxWidth, hPad, vPad) = when (state.scale) {
+        HudScale.COMPACT -> Triple(180.dp, 8.dp, 6.dp)
+        HudScale.STANDARD -> Triple(220.dp, 12.dp, 8.dp)
+        HudScale.LARGE -> Triple(260.dp, 16.dp, 10.dp)
+    }
+
+    val alpha = (state.opacityPercent.coerceIn(20, 100) / 100f)
+
     AwarenessTheme(darkTheme = true) {
         Box(
             modifier = modifier
                 .wrapContentSize()
-                .widthIn(max = 220.dp)
+                .widthIn(max = maxWidth)
                 .background(
-                    color = StudioBlankColors.SurfaceInverse.copy(alpha = 0.85f),
+                    color = StudioBlankColors.SurfaceInverse.copy(alpha = alpha),
                     shape = RectangleShape
                 )
                 .border(
@@ -56,42 +66,52 @@ fun HudOverlayView(
                     color = StudioBlankColors.BorderDefault,
                     shape = RectangleShape
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = hPad, vertical = vPad)
         ) {
             Column {
-                MessageLine(message = state.message)
-                TimerLine(elapsedMillis = state.elapsedMillis)
-                ReelsLine(reelCount = state.reelCount, showReelCount = state.showReelCount)
-                BrowserDomainLine(domainLabel = state.browserDomainLabel)
+                MessageLine(message = state.message, scale = state.scale)
+                TimerLine(elapsedMillis = state.elapsedMillis, scale = state.scale)
+                ReelsLine(reelCount = state.reelCount, showReelCount = state.showReelCount, scale = state.scale)
+                BrowserDomainLine(domainLabel = state.browserDomainLabel, scale = state.scale)
             }
         }
     }
 }
 
 @Composable
-private fun MessageLine(message: String) {
+private fun MessageLine(message: String, scale: HudScale) {
     if (message.isNotEmpty()) {
+        val (fontSize, lineHeight) = when (scale) {
+            HudScale.COMPACT -> Pair(11.sp, 14.sp)
+            HudScale.STANDARD -> Pair(12.sp, 16.sp)
+            HudScale.LARGE -> Pair(14.sp, 18.sp)
+        }
         Text(
             text = message,
             color = StudioBlankColors.TextInverse,
-            fontSize = 12.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Normal,
-            lineHeight = 16.sp
+            lineHeight = lineHeight
         )
     }
 }
 
 @Composable
-private fun TimerLine(elapsedMillis: Long) {
+private fun TimerLine(elapsedMillis: Long, scale: HudScale) {
     val formatted = if (elapsedMillis >= 3600_000L) {
         TimeFormatter.hms(elapsedMillis)
     } else {
         TimeFormatter.mmss(elapsedMillis)
     }
+    val fontSize = when (scale) {
+        HudScale.COMPACT -> 12.sp
+        HudScale.STANDARD -> 14.sp
+        HudScale.LARGE -> 16.sp
+    }
     Text(
         text = formatted,
         color = StudioBlankColors.TextInverse,
-        fontSize = 14.sp,
+        fontSize = fontSize,
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 4.dp)
@@ -99,12 +119,17 @@ private fun TimerLine(elapsedMillis: Long) {
 }
 
 @Composable
-private fun ReelsLine(reelCount: Int, showReelCount: Boolean) {
+private fun ReelsLine(reelCount: Int, showReelCount: Boolean, scale: HudScale) {
     if (showReelCount) {
+        val fontSize = when (scale) {
+            HudScale.COMPACT -> 10.sp
+            HudScale.STANDARD -> 11.sp
+            HudScale.LARGE -> 13.sp
+        }
         Text(
             text = "Reels: $reelCount",
             color = StudioBlankColors.TextSecondary,
-            fontSize = 11.sp,
+            fontSize = fontSize,
             fontFamily = FontFamily.Monospace,
             modifier = Modifier.padding(top = 2.dp)
         )
@@ -112,12 +137,17 @@ private fun ReelsLine(reelCount: Int, showReelCount: Boolean) {
 }
 
 @Composable
-private fun BrowserDomainLine(domainLabel: String?) {
+private fun BrowserDomainLine(domainLabel: String?, scale: HudScale) {
     if (domainLabel != null) {
+        val fontSize = when (scale) {
+            HudScale.COMPACT -> 10.sp
+            HudScale.STANDARD -> 11.sp
+            HudScale.LARGE -> 13.sp
+        }
         Text(
             text = domainLabel,
             color = StudioBlankColors.TextSecondary,
-            fontSize = 11.sp,
+            fontSize = fontSize,
             maxLines = 1,
             modifier = Modifier.padding(top = 2.dp)
         )
