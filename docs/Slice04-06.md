@@ -333,22 +333,13 @@ combine(sessionState, hudPreferences, timerTicks) { session, prefs, elapsed ->
 
 ### File & Folder Mapping
 
-```
-:core:domain        model/HudState.kt
-                    model/HudPreferences.kt
-                    model/MindfulnessMessage.kt
-                    model/DefaultMindfulnessMessages.kt
-                    usecase/ObserveHudStateUseCase.kt
-                    usecase/ObserveHudPreferencesUseCase.kt
-:core:presentation  util/TimeFormatter.kt
-                    util/MessageRotation.kt
-:feature:hud        HudComposable.kt (full content, visibility-aware)
-                    HudViewModel.kt (combines session + prefs + ticker)
-                    MindfulnessMessages.kt (re-export or adapter)
-:core:design-system theme/Color.kt
-                    theme/Type.kt
-                    component/HudText.kt
-```
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudComposable.kt` `[Modified]` `[Frontend]` — Full 3-line StudioBlank HUD overlay composable with isolated monotonic timer recomposition, zero-size layout when hidden, and package/browser-aware reel display.
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudForegroundService.kt` `[Modified]` `[Backend]` — Added companion reactive state stream provider and static `start(context)` / `stop(context)` helpers to bind overlay lifecycle to domain session state.
+- `app/src/main/kotlin/com/awareness/app/AppApplication.kt` `[Modified]` `[Backend]` — Wired `SessionOrchestrator`, `ObserveHudStateUseCase`, and `AccessibilityEventBusImpl` to automatically start/stop `HudForegroundService` on Active/Idle session transitions.
+- `app/build.gradle.kts` `[Modified]` `[Config/Build]` — Added `:core:data`, `:core:presentation`, `:core:accessibility`, `:core:overlay`, `:feature:settings`, and `:feature:hud` dependencies and Robolectric test options.
+- `core/presentation/src/test/kotlin/com/awareness/core/presentation/util/TimeFormatterBoundaryTest.kt` `[New]` `[Unit Test]` — Boundary unit tests for `TimeFormatter.formatElapsed` across sub-minute, hour, and multi-hour thresholds.
+- `feature/hud/src/test/kotlin/com/awareness/feature/hud/HudContentRotationIntegrationTest.kt` `[New]` `[Integration Test]` — Integration tests verifying delay-aware visibility, message rotation across display duration ticks, and browser reel line suppression.
+- `app/src/test/kotlin/com/awareness/app/AppPipelineIntegrationTest.kt` `[New]` `[Integration Test]` — End-to-end pipeline test verifying accessibility sensor event dispatch transitions application state machine and orchestrates HUD foreground service.
 
 ---
 
