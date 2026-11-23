@@ -21,11 +21,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "Awareness"
 
-// Modules for VS-01 & VS-02
+// Modules for VS-01, VS-02, VS-03 & VS-04
 include(":app")
 include(":core:domain")
 include(":core:design-system")
 include(":core:presentation")
 include(":core:data")
 include(":core:accessibility")
+include(":core:overlay")
 include(":feature:settings")
+include(":feature:hud")

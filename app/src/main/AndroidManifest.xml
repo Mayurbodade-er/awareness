@@ -44,6 +44,15 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <service
+            android:name="com.awareness.feature.hud.HudForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="mindfulness_hud" />
+        </service>
+
     </application>
 
 </manifest>
