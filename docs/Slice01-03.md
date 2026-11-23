@@ -568,15 +568,19 @@ On SessionStarted:
 
 ### File & Folder Mapping
 
-```
-:core:domain   SessionOrchestrator.kt
-               model/SessionState.kt
-               model/SessionSummary.kt
-               repository/SessionRepository.kt
-               repository/HudPreferencesRepository.kt (consumer)
-:core:data     repository/SessionRepositoryImpl.kt (stub until VS-08)
-:app:di        AccessibilityModule.kt (binds orchestrator, injects HudPreferencesRepository)
-```
+#### 1. Backend (Pure Kotlin Session State Machine & Use Cases)
+- `core/domain/src/main/kotlin/com/awareness/core/domain/orchestrator/SessionOrchestrator.kt` `[New]` `[Backend]` — Pure Kotlin orchestrator managing session lifecycle, 150ms deduplication, reveal delay snapshotting, pre-reveal reel counting, and summary emission.
+- `core/domain/src/main/kotlin/com/awareness/core/domain/usecase/ObserveHudStateUseCaseImpl.kt` `[New]` `[Backend]` — Combines SessionState, HudPreferences, and 1 Hz timer ticks into a reactive HudState stream with cyclic message rotation.
+
+#### 2. Database / Persistence (Session Staging)
+- `core/data/src/main/kotlin/com/awareness/core/data/repository/SessionRepositoryImpl.kt` `[New]` `[Database/Persistence]` — Thread-safe in-memory session summary repository implementing `SessionRepository` and aggregate calculation until Room is wired in VS-08.
+
+#### 3. Unit Tests
+- `core/domain/src/test/kotlin/com/awareness/core/domain/orchestrator/SessionOrchestratorTest.kt` `[New]` `[Unit Test]` — Unit tests verifying transition logic, delay snapshot immutability, pre-reveal reel counting, rapid deduplication, and repository error fallbacks.
+- `core/domain/src/test/kotlin/com/awareness/core/domain/usecase/ObserveHudStateUseCaseTest.kt` `[New]` `[Unit Test]` — Unit tests asserting visibility thresholding, message rotation indexing, and browser layout adjustments.
+
+#### 4. Integration Tests
+- `core/data/src/test/kotlin/com/awareness/core/data/repository/SessionRepositoryTest.kt` `[New]` `[Integration Test]` — Integration tests verifying session summary persistence and daily aggregate flow emissions.
 
 ---
 
