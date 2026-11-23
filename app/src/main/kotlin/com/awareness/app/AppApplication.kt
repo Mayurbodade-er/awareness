@@ -1,6 +1,7 @@
 package com.awareness.app
 
 import android.app.Application
+import android.os.SystemClock
 import com.awareness.core.accessibility.AccessibilityEventBusImpl
 import com.awareness.core.data.repository.HudPreferencesRepositoryImpl
 import com.awareness.core.data.repository.SessionRepositoryImpl
@@ -37,7 +38,8 @@ class AppApplication : Application() {
 
         observeHudStateUseCase = ObserveHudStateUseCaseImpl(
             sessionOrchestrator = sessionOrchestrator,
-            hudPreferencesRepository = hudPreferencesRepository
+            hudPreferencesRepository = hudPreferencesRepository,
+            timeProvider = { SystemClock.elapsedRealtime() }
         )
 
         val hudStateFlow = observeHudStateUseCase()

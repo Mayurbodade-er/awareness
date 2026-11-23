@@ -22,7 +22,8 @@ import kotlinx.coroutines.flow.flow
 class ObserveHudStateUseCaseImpl(
     private val sessionOrchestrator: SessionOrchestrator,
     private val hudPreferencesRepository: HudPreferencesRepository,
-    private val timerTicks: Flow<Long> = defaultTimerTicksFlow()
+    private val timeProvider: () -> Long = { System.currentTimeMillis() },
+    private val timerTicks: Flow<Long> = defaultTimerTicksFlow(timeProvider)
 ) : ObserveHudStateUseCase {
 
     override fun invoke(): Flow<HudState> {
@@ -74,12 +75,13 @@ class ObserveHudStateUseCaseImpl(
     }
 
     companion object {
-        fun defaultTimerTicksFlow(stepMillis: Long = 1000L): Flow<Long> = flow {
-            var tick = 0L
+        fun defaultTimerTicksFlow(
+            timeProvider: () -> Long = { System.currentTimeMillis() },
+            stepMillis: Long = 1000L
+        ): Flow<Long> = flow {
             while (true) {
-                emit(tick)
+                emit(timeProvider())
                 delay(stepMillis)
-                tick += stepMillis
             }
         }
     }
