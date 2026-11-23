@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_service_description">Monitors foreground presence of selected social media apps and browsers to promote mindful device usage.</string>
+</resources>

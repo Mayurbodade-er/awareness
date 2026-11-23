@@ -44,6 +44,7 @@ dependencies {
     implementation(project(":core:design-system"))
     implementation(project(":core:presentation"))
     implementation(project(":core:data"))
+    implementation(project(":core:accessibility"))
     implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
