@@ -21,11 +21,21 @@ class AwarenessAccessibilityService(
 
     private var currentForegroundPackage: String? = null
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        val info = serviceInfo ?: android.accessibilityservice.AccessibilityServiceInfo()
+        // Allow detecting transitions from target apps to non-target apps (e.g. Home, Settings)
+        info.packageNames = null
+        serviceInfo = info
+        android.util.Log.e(TAG, "onServiceConnected: packageNames set to null for exit detection")
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
         val packageName = event.packageName?.toString() ?: return
+        android.util.Log.e(TAG, "onAccessibilityEvent: pkg=$packageName, class=${event.className}")
         handleWindowStateChanged(packageName)
     }
 
@@ -35,20 +45,24 @@ class AwarenessAccessibilityService(
     internal fun handleWindowStateChanged(packageName: String) {
         val isTarget = TargetAppAllowlist.isTargetApp(packageName)
         val previousPackage = currentForegroundPackage
+        android.util.Log.e(TAG, "handleWindowStateChanged: pkg=$packageName, isTarget=$isTarget, previous=$previousPackage")
 
         if (isTarget) {
             if (previousPackage != packageName) {
                 val timestamp = timeProvider()
                 // If previous package was another target, close its session first
                 if (previousPackage != null && TargetAppAllowlist.isTargetApp(previousPackage)) {
+                    android.util.Log.e(TAG, "Ending previous target session: $previousPackage")
                     eventBus.tryEmit(AwarenessEvent.SessionEnded(previousPackage, timestamp))
                 }
                 currentForegroundPackage = packageName
+                android.util.Log.e(TAG, "Starting new session: $packageName at $timestamp")
                 eventBus.tryEmit(AwarenessEvent.SessionStarted(packageName, timestamp))
             }
         } else {
             if (previousPackage != null && TargetAppAllowlist.isTargetApp(previousPackage)) {
                 val timestamp = timeProvider()
+                android.util.Log.e(TAG, "Target app exited to non-target $packageName; ending session for $previousPackage")
                 eventBus.tryEmit(AwarenessEvent.SessionEnded(previousPackage, timestamp))
                 currentForegroundPackage = null
             }

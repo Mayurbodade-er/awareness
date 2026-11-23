@@ -37,6 +37,7 @@ fun HudOverlayView(
     modifier: Modifier = Modifier
 ) {
     val state by hudStateFlow.collectAsState()
+    android.util.Log.e("AwarenessHud", "HudOverlayView recomposed: isVisible=${state.isVisible}, elapsed=${state.elapsedMillis}ms, msg='${state.message}', scale=${state.scale}, alpha=${state.opacityPercent}")
 
     if (!state.isVisible) {
         // Render nothing visible when isVisible is false
