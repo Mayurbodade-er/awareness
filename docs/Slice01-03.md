@@ -236,38 +236,44 @@ selectedMessageIds -> reject empty in UI; repository reads fallback if empty/cor
 ```
 :core:domain        model/TargetApp.kt
                     model/AwarenessEvent.kt
+                    model/SessionState.kt
                     model/HudState.kt
                     model/MindfulnessMessage.kt
                     model/DefaultMindfulnessMessages.kt
                     model/HudPreferences.kt
+                    model/SessionSummary.kt
+                    model/DailyAggregate.kt
                     repository/SettingsRepository.kt
                     repository/HudPreferencesRepository.kt
+                    repository/SessionRepository.kt
+                    usecase/ObserveHudStateUseCase.kt
+                    usecase/GetDailyStatsUseCase.kt
+:core:design-system theme/Theme.kt
+                    tokens/Color.kt
+                    tokens/Typography.kt
+                    tokens/Spacing.kt
+                    components/StudioBlankButton.kt
+                    components/StudioBlankCard.kt
+                    components/StudioBlankCheckbox.kt
+                    components/StudioBlankTextField.kt
+                    components/StudioBlankChip.kt
+:core:presentation  permission/PermissionState.kt
+                    permission/PermissionRequestCoordinator.kt
+                    util/TimeFormatter.kt
+                    util/MessageRotation.kt
+                    util/BrowserDomainFormatter.kt
 :core:data          datastore/SettingsDataStore.kt
                     datastore/HudPreferencesDataStore.kt
                     repository/SettingsRepositoryImpl.kt
                     repository/HudPreferencesRepositoryImpl.kt
-:core:presentation  permission/PermissionState.kt
-                    permission/PermissionRequestCoordinator.kt
 :feature:settings   SettingsActivity.kt
                     SettingsScreen.kt
                     SettingsViewModel.kt
-                    permission/AccessibilityPermissionCard.kt
-                    permission/OverlayPermissionCard.kt
-                    permission/BatteryOptimizationCard.kt
-                    permission/NotificationPermissionCard.kt
-                    hud/HudPreferencesScreen.kt
-                    hud/MessageSelectionScreen.kt
-                    hud/HudPreferencesViewModel.kt
-                    di/SettingsModule.kt
+                    HudPersonalizationScreen.kt
+                    HudPersonalizationViewModel.kt
 :app                AppApplication.kt
                     MainActivity.kt
-                    di/AppModule.kt
-AndroidManifest.xml BIND_ACCESSIBILITY_SERVICE
-                    SYSTEM_ALERT_WINDOW
-                    FOREGROUND_SERVICE
-                    FOREGROUND_SERVICE_SPECIAL_USE
-                    REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-                    POST_NOTIFICATIONS
+                    AndroidManifest.xml
 ```
 
 ---
