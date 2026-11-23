@@ -133,19 +133,32 @@ data class HudState(
 
 ### File & Folder Mapping
 
-```
-:core:overlay      HudWindowManager.kt
-                   HudLayoutParamsFactory.kt
-                   OverlayPermissionChecker.kt
-:feature:hud       HudForegroundService.kt
-                   HudComposable.kt (visibility-aware shell)
-                   HudViewModel.kt (observes HudState)
-                   di/HudModule.kt
-:app               res/values/strings.xml (fgs_special_use_subtype string)
-AndroidManifest    <service android:foregroundServiceType="specialUse">
-                     <property android:name="PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                               android:value="mindfulness_hud" />
-```
+#### 1. Backend (Window Management & Overlay Architecture)
+- `core/overlay/src/main/kotlin/com/awareness/core/overlay/HudWindowParams.kt` `[New]` `[Backend]` — Data class holding window gravity and offset coordinates for overlay positioning.
+- `core/overlay/src/main/kotlin/com/awareness/core/overlay/OverlayPermissionChecker.kt` `[New]` `[Backend]` — System utility verifying `Settings.canDrawOverlays` permission.
+- `core/overlay/src/main/kotlin/com/awareness/core/overlay/HudLayoutParamsFactory.kt` `[New]` `[Backend]` — Factory creating `WindowManager.LayoutParams` with `FLAG_NOT_FOCUSABLE` and `FLAG_NOT_TOUCHABLE` for touch pass-through.
+- `core/overlay/src/main/kotlin/com/awareness/core/overlay/HudWindowManager.kt` `[New]` `[Backend]` — Interface and implementation injecting LifecycleOwner, SavedStateRegistryOwner, and ViewModelStoreOwner into ComposeView before `windowManager.addView`.
+
+#### 2. Frontend (Passive Renderer & Overlay UI)
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudForegroundService.kt` `[New]` `[Frontend]` — Passive specialUse Foreground Service (subtype: `mindfulness_hud`) hosting WindowManager and ComposeView without business logic.
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudViewModel.kt` `[New]` `[Frontend]` — State holder exposing reactive `HudState` stream to the HUD overlay composable.
+- `feature/hud/src/main/kotlin/com/awareness/feature/hud/HudComposable.kt` `[New]` `[Frontend]` — Visibility-aware Compose overlay rendering 0-size empty Box when `isVisible = false` and StudioBlank 0dp card when `isVisible = true`.
+
+#### 3. Unit Tests
+- `core/overlay/src/test/kotlin/com/awareness/core/overlay/HudLayoutParamsFactoryTest.kt` `[New]` `[Unit Test]` — Unit tests verifying touch pass-through flags (`FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE`) and overlay type.
+- `core/overlay/src/test/kotlin/com/awareness/core/overlay/HudWindowManagerTest.kt` `[New]` `[Unit Test]` — Unit tests verifying overlay permission rejection and safe attach/remove lifecycle.
+- `feature/hud/src/test/kotlin/com/awareness/feature/hud/HudViewModelTest.kt` `[New]` `[Unit Test]` — Unit tests verifying `StateFlow<HudState>` emission from use case.
+
+#### 4. Integration Tests
+- `feature/hud/src/test/kotlin/com/awareness/feature/hud/HudForegroundServiceTest.kt` `[New]` `[Integration Test]` — Robolectric integration test for foreground service lifecycle, notification creation, and overlay teardown.
+
+#### 5. Config & Build
+- `core/overlay/build.gradle.kts` `[New]` `[Config/Build]` — Module build configuration for WindowManager overlay coordination.
+- `feature/hud/build.gradle.kts` `[New]` `[Config/Build]` — Module build configuration for Compose overlay feature and service.
+- `settings.gradle.kts` `[Modified]` `[Config/Build]` — Included `:core:overlay` and `:feature:hud` in multi-module hierarchy.
+- `app/build.gradle.kts` `[Modified]` `[Config/Build]` — Added `:core:overlay` and `:feature:hud` module dependencies.
+- `app/src/main/AndroidManifest.xml` `[Modified]` `[Config/Build]` — Declared `HudForegroundService` with `foregroundServiceType="specialUse"` and `mindfulness_hud` subtype.
+- `gradle/libs.versions.toml` `[Modified]` `[Config/Build]` — Added `androidx-savedstate` and `androidx-lifecycle-viewmodel` version definitions.
 
 ---
 

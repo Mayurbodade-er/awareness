@@ -45,7 +45,9 @@ dependencies {
     implementation(project(":core:presentation"))
     implementation(project(":core:data"))
     implementation(project(":core:accessibility"))
+    implementation(project(":core:overlay"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:hud"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
