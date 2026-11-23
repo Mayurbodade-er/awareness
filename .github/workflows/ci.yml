@@ -27,7 +27,7 @@ jobs:
           echo "Checking manifests for forbidden INTERNET permission..."
           TARGET_DIRS=$(ls -d app core feature 2>/dev/null || true)
           if [ -n "$TARGET_DIRS" ]; then
-            ! grep -rn "android.permission.INTERNET" $TARGET_DIRS || {
+            ! grep -rn --exclude-dir=build "android.permission.INTERNET" $TARGET_DIRS || {
               echo "FAILED: android.permission.INTERNET detected in codebase!"
               exit 1
             }
@@ -39,7 +39,7 @@ jobs:
           echo "Checking for AlarmManager, postDelayed, UsageStatsManager, setRepeating..."
           TARGET_DIRS=$(ls -d app core feature 2>/dev/null || true)
           if [ -n "$TARGET_DIRS" ]; then
-            ! grep -rnE "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" $TARGET_DIRS || {
+            ! grep -rnE --exclude-dir=build "(AlarmManager|postDelayed|UsageStatsManager|setRepeating|Handler\(Looper)" $TARGET_DIRS || {
               echo "FAILED: Forbidden scheduler/polling detected!"
               exit 1
             }
@@ -51,11 +51,11 @@ jobs:
           echo "Checking for non-zero RoundedCornerShape & elevation..."
           TARGET_DIRS=$(ls -d app core feature core/design-system 2>/dev/null || true)
           if [ -n "$TARGET_DIRS" ]; then
-            ! grep -rnE "RoundedCornerShape\(([^0]|0\.[1-9])" $TARGET_DIRS || {
+            ! grep -rnE --exclude-dir=build "RoundedCornerShape\(([^0]|0\.[1-9])" $TARGET_DIRS || {
               echo "FAILED: Rounded corners detected! StudioBlank requires 0.dp (RectangleShape)."
               exit 1
             }
-            ! grep -rnE "elevation = [1-9]" $TARGET_DIRS || {
+            ! grep -rnE --exclude-dir=build "elevation = [1-9]" $TARGET_DIRS || {
               echo "FAILED: Elevation detected! StudioBlank requires flat 0.dp."
               exit 1
             }
